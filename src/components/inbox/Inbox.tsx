@@ -19,7 +19,8 @@ import {
   MoreVertical,
   ChevronRight,
   Filter,
-  MessageSquare
+  MessageSquare,
+  Building
 } from 'lucide-react';
 import { formatDateTime } from '../../lib/utils';
 import { Conversation, Message, Customer, Lead, Task, Note } from '../../types';
