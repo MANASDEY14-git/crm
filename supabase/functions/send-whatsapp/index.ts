@@ -117,11 +117,13 @@ Deno.serve(async (req: Request) => {
     const responseBody = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      const exactError = responseBody.error?.message || responseBody.message || `YCloud API responded with status ${response.status}`;
       return new Response(JSON.stringify({
-        error: responseBody.message || `YCloud API responded with status ${response.status}`,
+        success: false,
+        error: exactError,
         details: responseBody
       }), {
-        status: response.status,
+        status: 200,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
       });
     }
