@@ -10,7 +10,8 @@ import {
   TrendingUp,
   Edit2,
   Check,
-  X
+  X,
+  Database
 } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 
@@ -264,12 +265,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ setCurrentTab, setSele
                                 {formatCurrency(lead.expected_deal_value)}
                               </span>
                               
-                              {lead.priority === 'high' && (
-                                <span className="text-[8px] bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5">
-                                  <Flame size={8} fill="currentColor" />
-                                  Hot
-                                </span>
-                              )}
+                              <div className="flex items-center gap-1">
+                                {lead.source === 'erp_import' && (
+                                  <span className="flex items-center gap-0.5 text-[8px] font-bold bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-full">
+                                    <Database size={8} /> ERP
+                                  </span>
+                                )}
+                                {lead.priority === 'high' && (
+                                  <span className="text-[8px] bg-rose-50 dark:bg-rose-950/20 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5">
+                                    <Flame size={8} fill="currentColor" />
+                                    Hot
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
                             {/* Overdue Indicator */}

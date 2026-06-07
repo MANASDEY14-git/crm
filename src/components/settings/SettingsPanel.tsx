@@ -13,9 +13,11 @@ import {
   Save,
   CheckCircle,
   HelpCircle,
-  Copy
+  Copy,
+  Database
 } from 'lucide-react';
 import { Profile } from '../../types';
+import { ErpIntegrationPanel } from './ErpIntegrationPanel';
 
 export const SettingsPanel: React.FC = () => {
   const { business, profile, signOut } = useAuth();
@@ -206,6 +208,9 @@ export const SettingsPanel: React.FC = () => {
             </button>
             <button className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 flex items-center gap-2">
               <Users size={14} /> Team Management
+            </button>
+            <button className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 flex items-center gap-2">
+              <Database size={14} /> ERP Integration
             </button>
           </div>
         </div>
@@ -473,6 +478,9 @@ export const SettingsPanel: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Section ERP Integration */}
+          <ErpIntegrationPanel />
 
           {/* Section 4: Testing & Danger Zone */}
           <div className="p-5 rounded-2xl border border-rose-200/40 dark:border-rose-950/20 bg-rose-50/5 dark:bg-rose-950/5 space-y-4">

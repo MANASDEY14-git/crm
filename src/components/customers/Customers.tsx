@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { Customer, Lead, Task, Note, Profile } from '../../types';
+import { Customer, Lead, Task, Note, Profile, ErpLedger } from '../../types';
 import { 
   Users, 
   Search, 
@@ -17,7 +17,10 @@ import {
   TrendingUp,
   ChevronRight,
   UserCheck,
-  Building
+  Building,
+  Database,
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { cn, formatCurrency } from '../../lib/utils';
 
@@ -52,6 +55,9 @@ export const Customers: React.FC<CustomersProps> = ({
   const [editAddress, setEditAddress] = useState('');
   const [editGst, setEditGst] = useState('');
 
+  // ERP Ledger state
+  const [erpLedger, setErpLedger] = useState<ErpLedger | null>(null);
+
   useEffect(() => {
     if (business) {
       fetchCustomers();
@@ -61,9 +67,11 @@ export const Customers: React.FC<CustomersProps> = ({
   useEffect(() => {
     if (selectedCustomerId && business) {
       fetchCustomerDetails(selectedCustomerId);
+      fetchErpLedger(selectedCustomerId);
     } else {
       setCustDetails(null);
       setActivityFeed([]);
+      setErpLedger(null);
     }
   }, [selectedCustomerId, business]);
 
@@ -87,6 +95,19 @@ export const Customers: React.FC<CustomersProps> = ({
       console.error('Error fetching customers:', e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchErpLedger = async (custId: string) => {
+    try {
+      const { data } = await supabase
+        .from('erp_ledgers')
+        .select('*')
+        .eq('customer_id', custId)
+        .maybeSingle();
+      setErpLedger(data as ErpLedger | null);
+    } catch (e) {
+      console.error('Error fetching ERP ledger:', e);
     }
   };
 
@@ -289,7 +310,14 @@ export const Customers: React.FC<CustomersProps> = ({
                       {c.name.charAt(0)}
                     </div>
                     <div className="truncate">
-                      <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{c.name}</h4>
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{c.name}</h4>
+                        {c.erp_source && (
+                          <span className="shrink-0 flex items-center gap-0.5 text-[8px] font-bold bg-indigo-100 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded-full">
+                            <Database size={8} /> ERP
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-zinc-400 mt-0.5">{c.phone}</p>
                     </div>
                   </div>
@@ -359,6 +387,72 @@ export const Customers: React.FC<CustomersProps> = ({
               {/* Profile Details (Left col) */}
               <div className="space-y-6">
                 
+                {/* ERP Ledger Card — shown only for ERP-synced customers */}
+                {custDetails.erp_source && (
+                  <div className="p-4 rounded-2xl border border-indigo-200/40 dark:border-indigo-900/30 bg-indigo-50/30 dark:bg-indigo-950/10 shadow-sm space-y-3">
+                    <div className="flex items-center gap-1.5">
+                      <Database size={13} className="text-indigo-500" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">ERP Ledger</h3>
+                    </div>
+
+                    {erpLedger ? (
+                      <>
+                        {/* Outstanding Balance — primary metric */}
+                        <div className="p-3 rounded-xl bg-white dark:bg-zinc-900 border border-indigo-100/50 dark:border-indigo-900/20">
+                          <span className="text-[10px] text-zinc-400 font-medium">Outstanding Balance</span>
+                          <p className={cn(
+                            'text-xl font-extrabold mt-0.5',
+                            erpLedger.outstanding_balance > 0
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-emerald-600 dark:text-emerald-400'
+                          )}>
+                            {formatCurrency(Math.abs(erpLedger.outstanding_balance))}
+                            {erpLedger.outstanding_balance > 0 && (
+                              <span className="ml-1.5 text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/20 px-1.5 py-0.5 rounded-full">DUES</span>
+                            )}
+                            {erpLedger.outstanding_balance <= 0 && (
+                              <span className="ml-1.5 text-[10px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 px-1.5 py-0.5 rounded-full">CLEAR</span>
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-zinc-400">Total Billed</span>
+                            <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatCurrency(erpLedger.total_billed)}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-zinc-400">Total Paid</span>
+                            <span className="font-bold text-emerald-600">{formatCurrency(erpLedger.total_paid)}</span>
+                          </div>
+                          {erpLedger.last_transaction_date && (
+                            <div className="flex justify-between text-xs">
+                              <span className="text-zinc-400">Last Transaction</span>
+                              <span className="font-semibold text-zinc-600 dark:text-zinc-400">
+                                {new Date(erpLedger.last_transaction_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-indigo-100/50 dark:border-indigo-900/20">
+                          <p className="text-[9px] text-zinc-400">
+                            Last synced: {new Date(erpLedger.synced_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                          </p>
+                          {custDetails.erp_customer_id && (
+                            <p className="text-[9px] font-mono text-zinc-400 mt-0.5">ERP ID: {custDetails.erp_customer_id}</p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="py-4 text-center">
+                        <RefreshCw size={18} className="text-indigo-300 mx-auto mb-1.5" />
+                        <p className="text-[10px] text-zinc-400 italic">No ledger data yet. Run ERP sync in Settings.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Lead Status */}
                 <div className="p-4 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-900 shadow-sm space-y-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Pipeline Status</h3>
