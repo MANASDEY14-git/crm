@@ -12,7 +12,8 @@ import {
   ShieldAlert,
   Save,
   CheckCircle,
-  HelpCircle
+  HelpCircle,
+  Copy
 } from 'lucide-react';
 import { Profile } from '../../types';
 
@@ -25,13 +26,50 @@ export const SettingsPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // Mocks
-  const [whatsappStatus, setWhatsappStatus] = useState({
-    connected: true,
-    phoneNumber: '+91 99999 88888',
-    webhookUrl: 'https://yursqmhzwhjnjesmbjua.supabase.co/functions/v1/whatsapp-webhook',
-    battery: '88%'
-  });
+  // YCloud States
+  const [ycloudApiKey, setYcloudApiKey] = useState('');
+  const [ycloudSenderPhone, setYcloudSenderPhone] = useState('');
+  const [saveWhatsappSuccess, setSaveWhatsappSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://yursqmhzwhjnjesmbjua.supabase.co';
+  const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-webhook`;
+
+  const handleCopyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleUpdateWhatsAppSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!business) return;
+
+    setLoading(true);
+    setSaveWhatsappSuccess(false);
+
+    try {
+      const { error } = await supabase
+        .from('businesses')
+        .update({ 
+          ycloud_api_key: ycloudApiKey.trim() || null,
+          ycloud_sender_phone: ycloudSenderPhone.trim() || null
+        })
+        .eq('id', business.id);
+
+      if (error) throw error;
+      setSaveWhatsappSuccess(true);
+      setTimeout(() => {
+        setSaveWhatsappSuccess(false);
+        window.location.reload();
+      }, 1500);
+    } catch (e) {
+      console.error('Error updating WhatsApp settings:', e);
+      alert('Failed to update WhatsApp settings: ' + (e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const [notificationSettings, setNotificationSettings] = useState({
     newChat: true,
@@ -42,6 +80,8 @@ export const SettingsPanel: React.FC = () => {
   useEffect(() => {
     if (business) {
       setBizName(business.name);
+      setYcloudApiKey(business.ycloud_api_key || '');
+      setYcloudSenderPhone(business.ycloud_sender_phone || '');
       fetchTeamMembers();
     }
   }, [business]);
@@ -191,36 +231,110 @@ export const SettingsPanel: React.FC = () => {
             </form>
           </div>
 
-          {/* Section 2: WhatsApp Webhook/Connection Status */}
+          {/* Section 2: WhatsApp Integration */}
           <div className="p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-900 shadow-sm space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
               <MessageSquare size={14} className="text-emerald-600" />
-              WhatsApp Integration Status
+              WhatsApp Integration (YCloud)
             </h3>
 
             <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/20 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-zinc-500">Connection State:</span>
-                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
-                  <span className="h-2 w-2 bg-emerald-600 rounded-full animate-ping"></span>
-                  Active / Connected
-                </span>
+                {ycloudApiKey && ycloudSenderPhone ? (
+                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                    <span className="h-2 w-2 bg-emerald-600 rounded-full animate-ping"></span>
+                    Active (Connected via YCloud)
+                  </span>
+                ) : (
+                  <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
+                    <span className="h-2 w-2 bg-amber-500 rounded-full"></span>
+                    Demo Mode (Simulated)
+                  </span>
+                )}
               </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500">Sender Number:</span>
-                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{whatsappStatus.phoneNumber}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-zinc-500">Webhook Sync endpoint:</span>
-                <span className="font-mono text-[9px] bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-zinc-600 dark:text-zinc-400 select-all truncate max-w-[180px]">
-                  {whatsappStatus.webhookUrl}
-                </span>
+              
+              {ycloudSenderPhone && (
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-zinc-500">Sender Number:</span>
+                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">{ycloudSenderPhone}</span>
+                </div>
+              )}
+              
+              <div className="flex justify-between items-center text-xs gap-4">
+                <span className="text-zinc-500 shrink-0">Webhook Sync URL:</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="font-mono text-[9px] bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-zinc-600 dark:text-zinc-400 select-all truncate">
+                    {webhookUrl}
+                  </span>
+                  <button
+                    onClick={handleCopyWebhook}
+                    className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 cursor-pointer shrink-0 transition-colors"
+                    title="Copy Webhook URL"
+                  >
+                    {copied ? (
+                      <span className="text-[8px] font-bold text-emerald-600">Copied!</span>
+                    ) : (
+                      <Copy size={11} />
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="text-[9px] text-zinc-400 border-t border-zinc-200/20 pt-2 flex items-center gap-1">
                 <Smartphone size={10} />
-                <span>Simulated status: All messages trigger backend updates only. Front-end is secured.</span>
+                <span>Configure this webhook URL in your YCloud dashboard for <code>whatsapp.inbound_message.received</code> events.</span>
               </div>
             </div>
+
+            {/* Credentials Form */}
+            <form onSubmit={handleUpdateWhatsAppSettings} className="space-y-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                Configure Credentials
+              </h4>
+              
+              <div>
+                <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
+                  YCloud API Key
+                </label>
+                <input
+                  type="password"
+                  placeholder={ycloudApiKey ? "••••••••••••••••••••••••••••••••" : "Paste your YCloud API Key..."}
+                  value={ycloudApiKey}
+                  onChange={e => setYcloudApiKey(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
+                  WhatsApp Sender Phone Number (E.164 format)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. +919999988888"
+                  value={ycloudSenderPhone}
+                  onChange={e => setYcloudSenderPhone(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-zinc-500 text-white font-semibold text-xs px-4 py-2 rounded-xl cursor-pointer shadow-sm transition-colors"
+                >
+                  <Save size={13} />
+                  Save WhatsApp Settings
+                </button>
+
+                {saveWhatsappSuccess && (
+                  <span className="text-[10px] text-emerald-600 flex items-center gap-1 animate-fade-in">
+                    <CheckCircle size={12} /> Saved & Refreshing...
+                  </span>
+                )}
+              </div>
+            </form>
           </div>
 
           {/* Section 3: Team list */}

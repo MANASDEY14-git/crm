@@ -149,8 +149,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
   };
 
   const handleCreateChat = async (e: React.FormEvent) => {
-    e.preventDefault();
     if (!business || !chatCustomer || !chatFirstMsg) return;
+    e.preventDefault();
     setLoading(true);
     try {
       // 1. Create conversation
@@ -177,6 +177,27 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
       });
 
       if (msgError) throw msgError;
+
+      // 3. Send via YCloud WhatsApp API if credentials are configured
+      if (business?.ycloud_api_key && business?.ycloud_sender_phone) {
+        const recipientPhone = customers.find(c => c.id === chatCustomer)?.phone;
+        if (recipientPhone) {
+          const { data: callData, error: callError } = await supabase.functions.invoke('send-whatsapp', {
+            body: {
+              recipientPhone,
+              text: chatFirstMsg
+            }
+          });
+          
+          if (callError) {
+            console.error('YCloud Edge Function error:', callError);
+            alert(`Warning: Chat created locally but failed to send via YCloud WhatsApp: ${callError.message}`);
+          } else if (callData?.error) {
+            console.error('YCloud API error details:', callData);
+            alert(`Warning: Chat created locally but YCloud API failed: ${callData.error}`);
+          }
+        }
+      }
 
       setChatCustomer('');
       setChatFirstMsg('');

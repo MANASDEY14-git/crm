@@ -277,6 +277,24 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
         })
         .eq('id', activeConv.id);
 
+      // 3. Send via YCloud WhatsApp API if credentials are configured
+      if (business?.ycloud_api_key && business?.ycloud_sender_phone) {
+        const { data: callData, error: callError } = await supabase.functions.invoke('send-whatsapp', {
+          body: {
+            recipientPhone: activeConv.customer?.phone,
+            text: textToSend
+          }
+        });
+        
+        if (callError) {
+          console.error('YCloud Edge Function error:', callError);
+          alert(`Warning: Message saved locally but failed to dispatch via YCloud WhatsApp: ${callError.message}`);
+        } else if (callData?.error) {
+          console.error('YCloud API error details:', callData);
+          alert(`Warning: Message saved locally but YCloud API failed: ${callData.error}`);
+        }
+      }
+
       fetchConversations();
     } catch (e) {
       console.error('Error sending message:', e);

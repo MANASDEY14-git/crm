@@ -2,6 +2,8 @@ export interface Business {
   id: string;
   name: string;
   created_at: string;
+  ycloud_api_key?: string | null;
+  ycloud_sender_phone?: string | null;
 }
 
 export interface Profile {
