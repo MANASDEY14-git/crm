@@ -26,17 +26,30 @@ export const SettingsPanel: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Provider State
+  const [whatsappProvider, setWhatsappProvider] = useState<'ycloud' | 'openwa'>('ycloud');
+
   // YCloud States
   const [ycloudApiKey, setYcloudApiKey] = useState('');
   const [ycloudSenderPhone, setYcloudSenderPhone] = useState('');
+
+  // OpenWA States
+  const [openwaApiUrl, setOpenwaApiUrl] = useState('');
+  const [openwaApiKey, setOpenwaApiKey] = useState('');
+  const [openwaSessionId, setOpenwaSessionId] = useState('my-bot');
+
   const [saveWhatsappSuccess, setSaveWhatsappSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://yursqmhzwhjnjesmbjua.supabase.co';
   const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-webhook`;
 
+  const activeWebhookUrl = whatsappProvider === 'openwa' && business
+    ? `${webhookUrl}?business_id=${business.id}&provider=openwa`
+    : webhookUrl;
+
   const handleCopyWebhook = () => {
-    navigator.clipboard.writeText(webhookUrl);
+    navigator.clipboard.writeText(activeWebhookUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -52,8 +65,12 @@ export const SettingsPanel: React.FC = () => {
       const { error } = await supabase
         .from('businesses')
         .update({ 
+          whatsapp_provider: whatsappProvider,
           ycloud_api_key: ycloudApiKey.trim() || null,
-          ycloud_sender_phone: ycloudSenderPhone.trim() || null
+          ycloud_sender_phone: ycloudSenderPhone.trim() || null,
+          openwa_api_url: openwaApiUrl.trim() || null,
+          openwa_api_key: openwaApiKey.trim() || null,
+          openwa_session_id: openwaSessionId.trim() || 'my-bot'
         })
         .eq('id', business.id);
 
@@ -80,8 +97,12 @@ export const SettingsPanel: React.FC = () => {
   useEffect(() => {
     if (business) {
       setBizName(business.name);
+      setWhatsappProvider((business.whatsapp_provider as 'ycloud' | 'openwa') || 'ycloud');
       setYcloudApiKey(business.ycloud_api_key || '');
       setYcloudSenderPhone(business.ycloud_sender_phone || '');
+      setOpenwaApiUrl(business.openwa_api_url || '');
+      setOpenwaApiKey(business.openwa_api_key || '');
+      setOpenwaSessionId(business.openwa_session_id || 'my-bot');
       fetchTeamMembers();
     }
   }, [business]);
@@ -233,39 +254,64 @@ export const SettingsPanel: React.FC = () => {
 
           {/* Section 2: WhatsApp Integration */}
           <div className="p-5 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-900 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
-              <MessageSquare size={14} className="text-emerald-600" />
-              WhatsApp Integration (YCloud)
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 flex items-center gap-1.5">
+                <MessageSquare size={14} className="text-emerald-600" />
+                WhatsApp Integration ({whatsappProvider === 'openwa' ? 'OpenWA' : 'YCloud'})
+              </h3>
+            </div>
 
             <div className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/40 border border-zinc-200/20 space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-zinc-500">Connection State:</span>
-                {ycloudApiKey && ycloudSenderPhone ? (
-                  <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
-                    <span className="h-2 w-2 bg-emerald-600 rounded-full animate-ping"></span>
-                    Active (Connected via YCloud)
-                  </span>
+                {whatsappProvider === 'openwa' ? (
+                  openwaApiUrl && openwaApiKey ? (
+                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                      <span className="h-2 w-2 bg-emerald-600 rounded-full animate-ping"></span>
+                      Active (Connected via OpenWA)
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
+                      <span className="h-2 w-2 bg-amber-500 rounded-full"></span>
+                      Demo Mode (Simulated)
+                    </span>
+                  )
                 ) : (
-                  <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
-                    <span className="h-2 w-2 bg-amber-500 rounded-full"></span>
-                    Demo Mode (Simulated)
-                  </span>
+                  ycloudApiKey && ycloudSenderPhone ? (
+                    <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                      <span className="h-2 w-2 bg-emerald-600 rounded-full animate-ping"></span>
+                      Active (Connected via YCloud)
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-amber-600 flex items-center gap-1.5">
+                      <span className="h-2 w-2 bg-amber-500 rounded-full"></span>
+                      Demo Mode (Simulated)
+                    </span>
+                  )
                 )}
               </div>
               
-              {ycloudSenderPhone && (
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-zinc-500">Sender Number:</span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">{ycloudSenderPhone}</span>
-                </div>
+              {whatsappProvider === 'openwa' ? (
+                openwaSessionId && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-500">Session ID:</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{openwaSessionId}</span>
+                  </div>
+                )
+              ) : (
+                ycloudSenderPhone && (
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-zinc-500">Sender Number:</span>
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200">{ycloudSenderPhone}</span>
+                  </div>
+                )
               )}
               
               <div className="flex justify-between items-center text-xs gap-4">
                 <span className="text-zinc-500 shrink-0">Webhook Sync URL:</span>
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="font-mono text-[9px] bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-zinc-600 dark:text-zinc-400 select-all truncate">
-                    {webhookUrl}
+                    {activeWebhookUrl}
                   </span>
                   <button
                     onClick={handleCopyWebhook}
@@ -282,41 +328,105 @@ export const SettingsPanel: React.FC = () => {
               </div>
               <div className="text-[9px] text-zinc-400 border-t border-zinc-200/20 pt-2 flex items-center gap-1">
                 <Smartphone size={10} />
-                <span>Configure this webhook URL in your YCloud dashboard for <code>whatsapp.inbound_message.received</code> events.</span>
+                <span>
+                  {whatsappProvider === 'openwa' 
+                    ? "Configure this webhook URL in your OpenWA dashboard or API settings for message.received events."
+                    : "Configure this webhook URL in your YCloud dashboard for whatsapp.inbound_message.received events."
+                  }
+                </span>
               </div>
             </div>
 
             {/* Credentials Form */}
             <form onSubmit={handleUpdateWhatsAppSettings} className="space-y-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
               <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                Configure Credentials
+                Configure WhatsApp Integration
               </h4>
-              
-              <div>
-                <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
-                  YCloud API Key
-                </label>
-                <input
-                  type="password"
-                  placeholder={ycloudApiKey ? "••••••••••••••••••••••••••••••••" : "Paste your YCloud API Key..."}
-                  value={ycloudApiKey}
-                  onChange={e => setYcloudApiKey(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
-                />
-              </div>
 
               <div>
                 <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
-                  WhatsApp Sender Phone Number (E.164 format)
+                  WhatsApp Integration Provider
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. +919999988888"
-                  value={ycloudSenderPhone}
-                  onChange={e => setYcloudSenderPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
-                />
+                <select
+                  value={whatsappProvider}
+                  onChange={e => setWhatsappProvider(e.target.value as 'ycloud' | 'openwa')}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                >
+                  <option value="ycloud">YCloud WhatsApp Business API</option>
+                  <option value="openwa">OpenWA (Self-hosted WhatsApp API Gateway)</option>
+                </select>
               </div>
+              
+              {whatsappProvider === 'ycloud' ? (
+                <>
+                  <div>
+                    <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
+                      YCloud API Key
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={ycloudApiKey ? "••••••••••••••••••••••••••••••••" : "Paste your YCloud API Key..."}
+                      value={ycloudApiKey}
+                      onChange={e => setYcloudApiKey(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
+                      WhatsApp Sender Phone Number (E.164 format)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. +919999988888"
+                      value={ycloudSenderPhone}
+                      onChange={e => setYcloudSenderPhone(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
+                      OpenWA API Base URL
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. http://localhost:2785/api"
+                      value={openwaApiUrl}
+                      onChange={e => setOpenwaApiUrl(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
+                      OpenWA API Key (X-API-Key)
+                    </label>
+                    <input
+                      type="password"
+                      placeholder={openwaApiKey ? "••••••••••••••••••••••••••••••••" : "Paste your OpenWA API Key..."}
+                      value={openwaApiKey}
+                      onChange={e => setOpenwaApiKey(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
+                      OpenWA Session ID
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. my-bot"
+                      value={openwaSessionId}
+                      onChange={e => setOpenwaSessionId(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                    />
+                  </div>
+                </>
+              )}
 
               <div className="flex items-center gap-3">
                 <button

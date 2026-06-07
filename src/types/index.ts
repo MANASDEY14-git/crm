@@ -4,6 +4,10 @@ export interface Business {
   created_at: string;
   ycloud_api_key?: string | null;
   ycloud_sender_phone?: string | null;
+  whatsapp_provider?: string | null;
+  openwa_api_url?: string | null;
+  openwa_api_key?: string | null;
+  openwa_session_id?: string | null;
 }
 
 export interface Profile {
