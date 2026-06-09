@@ -128,12 +128,21 @@ export const SettingsPanel: React.FC = () => {
   const fetchTeamMembers = async () => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
+        .from('memberships')
+        .select('role, profiles (*)')
         .eq('business_id', business?.id);
       
       if (error) throw error;
-      setTeam(data || []);
+      
+      // Map members and assign their membership role
+      const members: Profile[] = (data || [])
+        .filter(m => m.profiles)
+        .map((m: any) => ({
+          ...m.profiles,
+          role: m.role
+        }));
+
+      setTeam(members);
     } catch (e) {
       console.error('Error fetching team members:', e);
     }

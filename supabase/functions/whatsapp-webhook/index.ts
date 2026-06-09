@@ -47,14 +47,38 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      if (!businessIdParam) {
-        return new Response(JSON.stringify({ error: "Missing business_id query parameter for OpenWA webhook" }), {
+      // Look up session ID from query params or payload body
+      const sessionId = url.searchParams.get("session_id") || payload.session_id || payload.sessionId || (payload.data && (payload.data.session_id || payload.data.sessionId || payload.data.session));
+
+      if (!sessionId) {
+        return new Response(JSON.stringify({ error: "Missing session_id identifier for OpenWA session" }), {
           status: 400,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
       }
 
-      businessId = businessIdParam;
+      // Strict tenant session lookup
+      const { data: sessionData, error: sessionErr } = await supabase
+        .from('whatsapp_sessions')
+        .select('business_id')
+        .eq('session_id', sessionId)
+        .eq('provider', 'openwa')
+        .maybeSingle();
+
+      if (sessionErr || !sessionData) {
+        // Fallback to legacy businessIdParam for backwards compatibility if no session mapping is set up
+        if (businessIdParam) {
+          businessId = businessIdParam;
+        } else {
+          console.error(`Unrecognized or unauthorized OpenWA session: ${sessionId}`, sessionErr);
+          return new Response(JSON.stringify({ error: "Unrecognized or unauthorized session mapping" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+      } else {
+        businessId = sessionData.business_id;
+      }
 
       const msgData = payload.data;
       if (!msgData) {
@@ -138,25 +162,38 @@ Deno.serve(async (req: Request) => {
       const normalizeDigits = (p: string) => p.replace(/\D/g, "");
       const normalizedBusinessPhone = normalizeDigits(businessPhone);
 
-      const { data: businesses, error: bizError } = await supabase
-        .from("businesses")
-        .select("id, ycloud_sender_phone");
+      // Look up session in whatsapp_sessions for YCloud
+      const { data: sessionData, error: sessionErr } = await supabase
+        .from('whatsapp_sessions')
+        .select('business_id')
+        .eq('session_id', normalizedBusinessPhone)
+        .eq('provider', 'ycloud')
+        .maybeSingle();
 
-      if (bizError) throw bizError;
+      if (sessionErr || !sessionData) {
+        // Fallback to legacy business check by matching phone
+        const { data: businesses, error: bizError } = await supabase
+          .from("businesses")
+          .select("id, ycloud_sender_phone");
 
-      const matchedBiz = businesses?.find(b => 
-        b.ycloud_sender_phone && normalizeDigits(b.ycloud_sender_phone) === normalizedBusinessPhone
-      );
+        if (bizError) throw bizError;
 
-      if (!matchedBiz) {
-        console.log(`No business configured with phone: ${businessPhone}`);
-        return new Response(JSON.stringify({ error: "Business phone number not matched" }), {
-          status: 404,
-          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
-        });
+        const matchedBiz = businesses?.find(b => 
+          b.ycloud_sender_phone && normalizeDigits(b.ycloud_sender_phone) === normalizedBusinessPhone
+        );
+
+        if (!matchedBiz) {
+          console.log(`No business configured with phone: ${businessPhone}`);
+          return new Response(JSON.stringify({ error: "Business phone number not matched" }), {
+            status: 404,
+            headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+          });
+        }
+
+        businessId = matchedBiz.id;
+      } else {
+        businessId = sessionData.business_id;
       }
-
-      businessId = matchedBiz.id;
     }
 
     // 2. Check if customer exists in this business
@@ -244,6 +281,7 @@ Deno.serve(async (req: Request) => {
       .from('messages')
       .insert({
         conversation_id: conversationId,
+        business_id: businessId,
         sender_type: senderType,
         content: messageContent,
         created_at: new Date().toISOString()

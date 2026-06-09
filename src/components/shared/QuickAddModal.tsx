@@ -168,9 +168,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
 
       if (convError) throw convError;
 
-      // 2. Insert first message
+      // 2. Insert message
       const { error: msgError } = await supabase.from('messages').insert({
         conversation_id: conv.id,
+        business_id: business.id,
         sender_type: 'staff',
         sender_id: profile?.id || null,
         content: chatFirstMsg

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase, simulateIncomingWhatsAppMessage } from '../lib/supabase';
 import { Profile, Business } from '../types';
+import { TenantContext } from './TenantProvider';
 
 interface AuthContextType {
   user: any | null;
@@ -125,14 +126,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setupDemoBusinessAndProfile = async (userId: string, email: string, role: 'admin' | 'sales_staff') => {
     try {
-      // 1. Check if business already exists (we check if a business is already linked to the user's profile)
-      let { data: existingProf } = await supabase
-        .from('profiles')
-        .select('*, businesses(*)')
-        .eq('id', userId)
-        .maybeSingle();
+      // 1. Check if memberships exist for this user
+      let { data: existingMems } = await supabase
+        .from('memberships')
+        .select('*')
+        .eq('profile_id', userId);
 
-      if (existingProf?.business_id) {
+      if (existingMems && existingMems.length > 0) {
         await fetchProfileAndBusiness(userId);
         return;
       }
@@ -145,6 +145,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (bizError) throw bizError;
+
+      // 2.5 Create membership
+      const { error: memError } = await supabase
+        .from('memberships')
+        .insert({
+          profile_id: userId,
+          business_id: newBiz.id,
+          role: role
+        });
+
+      if (memError) throw memError;
 
       // 3. Create profile
       const fullName = role === 'admin' ? 'Manas (Owner)' : 'Rajesh (Sales)';
@@ -234,8 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (convAnanya.data) {
         await supabase.from('messages').insert([
-          { conversation_id: convAnanya.data.id, sender_type: 'staff', content: 'Hi Ananya! Welcome to Royal Furniture. How can I help you today?', sender_id: userId, created_at: new Date(Date.now() - 3600000 * 4).toISOString() },
-          { conversation_id: convAnanya.data.id, sender_type: 'customer', content: 'Can you share the catalog for luxury sofas?', created_at: new Date(Date.now() - 3600000 * 3).toISOString() }
+          { conversation_id: convAnanya.data.id, business_id: businessId, sender_type: 'staff', content: 'Hi Ananya! Welcome to Royal Furniture. How can I help you today?', sender_id: userId, created_at: new Date(Date.now() - 3600000 * 4).toISOString() },
+          { conversation_id: convAnanya.data.id, business_id: businessId, sender_type: 'customer', content: 'Can you share the catalog for luxury sofas?', created_at: new Date(Date.now() - 3600000 * 3).toISOString() }
         ]);
       }
 
@@ -250,9 +261,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (convVikram.data) {
         await supabase.from('messages').insert([
-          { conversation_id: convVikram.data.id, sender_type: 'customer', content: 'Looking for conference room setups.', created_at: new Date(Date.now() - 3600000 * 24).toISOString() },
-          { conversation_id: convVikram.data.id, sender_type: 'staff', content: 'Sure. We have standard solid wood and modular options. I will prepare a plan.', sender_id: userId, created_at: new Date(Date.now() - 3600000 * 18).toISOString() },
-          { conversation_id: convVikram.data.id, sender_type: 'customer', content: 'Please send the commercial quotation.', created_at: new Date(Date.now() - 3600000 * 12).toISOString() }
+          { conversation_id: convVikram.data.id, business_id: businessId, sender_type: 'customer', content: 'Looking for conference room setups.', created_at: new Date(Date.now() - 3600000 * 24).toISOString() },
+          { conversation_id: convVikram.data.id, business_id: businessId, sender_type: 'staff', content: 'Sure. We have standard solid wood and modular options. I will prepare a plan.', sender_id: userId, created_at: new Date(Date.now() - 3600000 * 18).toISOString() },
+          { conversation_id: convVikram.data.id, business_id: businessId, sender_type: 'customer', content: 'Please send the commercial quotation.', created_at: new Date(Date.now() - 3600000 * 12).toISOString() }
         ]);
       }
 
@@ -283,5 +294,15 @@ export const useAuth = () => {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+  
+  const tenant = useContext(TenantContext);
+  
+  return {
+    ...context,
+    business: tenant ? tenant.activeBusiness : context.business,
+    businesses: tenant ? tenant.businesses : [],
+    switchBusiness: tenant ? tenant.switchBusiness : async () => {},
+    createBusiness: tenant ? tenant.createBusiness : async () => {},
+    tenantLoading: tenant ? tenant.loading : false
+  };
 };

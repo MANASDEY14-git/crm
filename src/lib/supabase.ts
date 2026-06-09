@@ -101,6 +101,7 @@ export async function simulateIncomingWhatsAppMessage(
       .from('messages')
       .insert({
         conversation_id: conversationId,
+        business_id: businessId,
         sender_type: 'customer',
         content: messageContent,
         created_at: new Date().toISOString()

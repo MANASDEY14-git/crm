@@ -31,8 +31,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   collapsed, 
   setCollapsed 
 }) => {
-  const { profile, business, signOut } = useAuth();
+  const { profile, business, businesses, switchBusiness, createBusiness, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [showSwitcher, setShowSwitcher] = React.useState(false);
+  const [newBizName, setNewBizName] = React.useState('');
+  const [creating, setCreating] = React.useState(false);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -82,26 +85,106 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* Profile Summary */}
+      {/* Profile Summary / Tenant Switcher */}
       {!collapsed && (
         <div className="p-4 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-zinc-50/50 dark:bg-zinc-900/30">
-          <p className="text-xs text-zinc-400 dark:text-zinc-500 font-medium uppercase tracking-wider">Business</p>
-          <p className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate mt-0.5">
-            {business?.name || 'Loading Biz...'}
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-600 dark:text-zinc-400">
-              {profile?.full_name?.charAt(0) || 'U'}
-            </div>
-            <div className="truncate">
-              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">
-                {profile?.full_name || 'User'}
-              </p>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 capitalize">
-                {profile?.role === 'admin' ? 'Owner' : 'Sales Agent'}
+          <div className="flex justify-between items-center cursor-pointer group" onClick={() => setShowSwitcher(!showSwitcher)}>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold uppercase tracking-wider">Workspace</p>
+              <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate mt-0.5 flex items-center gap-1 hover:text-emerald-650 dark:hover:text-emerald-400 transition-colors">
+                {business?.name || 'Loading Biz...'}
+                <span className="text-[8px] text-zinc-400 group-hover:text-emerald-600 transition-transform duration-200 inline-block shrink-0" style={{ transform: showSwitcher ? 'rotate(180deg)' : 'none' }}>
+                  ▼
+                </span>
               </p>
             </div>
           </div>
+
+          {showSwitcher ? (
+            <div className="mt-3 space-y-2 animate-fade-in">
+              {/* Business list */}
+              <div className="max-h-36 overflow-y-auto space-y-0.5 pr-1">
+                {businesses.map((biz) => {
+                  const isActive = biz.id === business?.id;
+                  return (
+                    <button
+                      key={biz.id}
+                      onClick={() => {
+                        if (switchBusiness) switchBusiness(biz.id);
+                        setShowSwitcher(false);
+                      }}
+                      className={cn(
+                        "w-full text-left px-2 py-1.5 rounded-lg text-[11px] flex items-center justify-between font-medium transition-all cursor-pointer",
+                        isActive
+                          ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 font-semibold"
+                          : "text-zinc-650 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900/40"
+                      )}
+                    >
+                      <span className="truncate">{biz.name}</span>
+                      {isActive && <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Business creation inline form */}
+              <div className="pt-2 border-t border-zinc-200/40 dark:border-zinc-800/40">
+                {businesses.length >= 3 ? (
+                  <p className="text-[9px] text-zinc-500 italic text-center font-medium">
+                    Limit of 3 workspaces reached.
+                  </p>
+                ) : (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!newBizName.trim() || creating) return;
+                      try {
+                        setCreating(true);
+                        if (createBusiness) await createBusiness(newBizName.trim());
+                        setNewBizName('');
+                        setShowSwitcher(false);
+                      } catch (err) {
+                        alert((err as Error).message);
+                      } finally {
+                        setCreating(false);
+                      }
+                    }}
+                    className="space-y-1.5"
+                  >
+                    <input
+                      type="text"
+                      required
+                      placeholder="New workspace name..."
+                      value={newBizName}
+                      onChange={(e) => setNewBizName(e.target.value)}
+                      className="w-full px-2 py-1 text-[11px] rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-zinc-850 dark:text-zinc-100 focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={creating}
+                      className="w-full py-1 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg text-[9px] font-bold transition-all shadow cursor-pointer text-center"
+                    >
+                      {creating ? 'Creating...' : '+ Create Workspace'}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-650 dark:text-zinc-400 shrink-0">
+                {profile?.full_name?.charAt(0) || 'U'}
+              </div>
+              <div className="truncate">
+                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">
+                  {profile?.full_name || 'User'}
+                </p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-450 capitalize">
+                  {profile?.role === 'admin' ? 'Owner' : profile?.role === 'sales_staff' ? 'Sales staff' : profile?.role}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

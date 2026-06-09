@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { TenantProvider } from './context/TenantProvider';
 import { ThemeProvider } from './context/ThemeContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
@@ -25,11 +26,17 @@ import { supabase } from './lib/supabase';
 
 // Interior App Content with Layout
 const AppContent: React.FC = () => {
-  const { user, loading, signInDemo } = useAuth();
+  const { user, loading, signInDemo, business } = useAuth();
   
   // App Navigation & Selections
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+
+  // Reset selected conversation and view on active business switch
+  React.useEffect(() => {
+    setSelectedCustomerId(null);
+    setCurrentTab('dashboard');
+  }, [business?.id]);
   
   // Layout states
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -75,6 +82,17 @@ const AppContent: React.FC = () => {
             });
 
           if (profError) throw profError;
+
+          // Create Membership
+          const { error: memError } = await supabase
+            .from('memberships')
+            .insert({
+              profile_id: data.user.id,
+              business_id: newBiz.id,
+              role: 'admin'
+            });
+
+          if (memError) throw memError;
           alert('Sign up successful! Please check your email for confirmation or sign in.');
           setIsSignUp(false);
         }
@@ -328,7 +346,9 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AppContent />
+        <TenantProvider>
+          <AppContent />
+        </TenantProvider>
       </AuthProvider>
     </ThemeProvider>
   )

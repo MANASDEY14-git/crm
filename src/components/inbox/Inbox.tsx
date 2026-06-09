@@ -262,6 +262,7 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
       // 1. Insert message
       const { error: msgError } = await supabase.from('messages').insert({
         conversation_id: activeConv.id,
+        business_id: business.id,
         sender_type: 'staff',
         sender_id: profile?.id || null,
         content: textToSend

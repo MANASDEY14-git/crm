@@ -19,12 +19,35 @@ export interface Business {
   has_erp_key?: boolean;                // boolean: is anon key configured?
 }
 
+export type UserRole = 'admin' | 'manager' | 'sales_staff' | 'viewer';
+
 export interface Profile {
   id: string;
   business_id: string | null;
   email: string;
   full_name: string | null;
-  role: 'admin' | 'sales_staff';
+  role: UserRole;
+  created_at: string;
+}
+
+export interface Membership {
+  id: string;
+  profile_id: string;
+  business_id: string;
+  role: UserRole;
+  created_at: string;
+  // Joins
+  business?: Business;
+  profile?: Profile;
+}
+
+export interface WhatsappSession {
+  id: string;
+  business_id: string;
+  provider: 'openwa' | 'ycloud';
+  session_id: string;
+  status: 'active' | 'inactive';
+  last_seen_at: string | null;
   created_at: string;
 }
 
