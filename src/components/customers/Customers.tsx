@@ -46,7 +46,7 @@ export const Customers: React.FC<CustomersProps> = ({
   
   // Add item states
   const [newNote, setNewNote] = useState('');
-  const [newTaskType, setNewTaskType] = useState<'Call' | 'WhatsApp Follow-up' | 'Meeting' | 'Callback'>('Call');
+  const [newTaskType, setNewTaskType] = useState<'Call' | 'Follow-up' | 'Meeting' | 'Callback'>('Call');
   const [newTaskDate, setNewTaskDate] = useState('');
   const [newTagText, setNewTagText] = useState('');
 
@@ -611,7 +611,7 @@ export const Customers: React.FC<CustomersProps> = ({
                       className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200"
                     >
                       <option value="Call">Call</option>
-                      <option value="WhatsApp Follow-up">WhatsApp Follow-up</option>
+                      <option value="Follow-up">Follow-up</option>
                       <option value="Meeting">Meeting</option>
                       <option value="Callback">Callback</option>
                     </select>

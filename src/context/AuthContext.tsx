@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase, simulateIncomingWhatsAppMessage } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { Profile, Business } from '../types';
 import { TenantContext } from './TenantProvider';
 
@@ -228,7 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // D. Create tasks
       const tasksToInsert = [
         { business_id: businessId, customer_id: custMap['Vikram Singh'], type: 'Call', due_date: new Date(Date.now() - 3600000 * 2).toISOString(), assigned_staff_id: userId, status: 'pending' },
-        { business_id: businessId, customer_id: custMap['Priya Sharma'], type: 'WhatsApp Follow-up', due_date: new Date(Date.now() - 86400000).toISOString(), assigned_staff_id: userId, status: 'pending' },
+        { business_id: businessId, customer_id: custMap['Priya Sharma'], type: 'Follow-up', due_date: new Date(Date.now() - 86400000).toISOString(), assigned_staff_id: userId, status: 'pending' },
         { business_id: businessId, customer_id: custMap['Ananya Rao'], type: 'Meeting', due_date: new Date(Date.now() + 86400000 * 2).toISOString(), assigned_staff_id: userId, status: 'pending' }
       ];
       await supabase.from('tasks').insert(tasksToInsert);

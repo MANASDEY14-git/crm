@@ -65,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 Krazey CRM
               </h1>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                WhatsApp First
+                Lightweight CRM
               </span>
             </div>
           </div>

@@ -2,15 +2,7 @@ export interface Business {
   id: string;
   name: string;
   created_at: string;
-  // WhatsApp — non-secret fields only
-  whatsapp_provider?: string | null;
-  ycloud_sender_phone?: string | null;  // phone number is not a secret
-  openwa_api_url?: string | null;       // URL is not a secret
-  openwa_session_id?: string | null;
-  // SECURITY: Raw API keys are NEVER sent to the frontend.
-  // These boolean flags tell the UI whether a key is configured, without revealing the key.
-  has_ycloud_key?: boolean;
-  has_openwa_key?: boolean;
+
   // ERP Integration — non-secret fields only
   erp_supabase_url?: string | null;     // URL is not a secret
   erp_sync_schedule?: string | null;
@@ -41,15 +33,6 @@ export interface Membership {
   profile?: Profile;
 }
 
-export interface WhatsappSession {
-  id: string;
-  business_id: string;
-  provider: 'openwa' | 'ycloud';
-  session_id: string;
-  status: 'active' | 'inactive';
-  last_seen_at: string | null;
-  created_at: string;
-}
 
 export interface Customer {
   id: string;
@@ -80,7 +63,7 @@ export interface Lead {
   priority: 'low' | 'medium' | 'high';
   follow_up_date: string | null;
   created_at: string;
-  source?: 'manual' | 'whatsapp' | 'erp_import';
+  source?: 'manual' | 'erp_import';
   // Joins
   customer?: Customer;
 }
@@ -146,7 +129,7 @@ export interface Task {
   id: string;
   business_id: string;
   customer_id: string;
-  type: 'Call' | 'WhatsApp Follow-up' | 'Meeting' | 'Callback';
+  type: 'Call' | 'Follow-up' | 'Meeting' | 'Callback';
   due_date: string;
   assigned_staff_id: string | null;
   status: 'pending' | 'completed';

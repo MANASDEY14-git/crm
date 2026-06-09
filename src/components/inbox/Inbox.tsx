@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase, simulateIncomingWhatsAppMessage } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Search, 
@@ -13,7 +13,6 @@ import {
   Paperclip, 
   Smile, 
   Sparkles,
-  Play,
   Check,
   Clock,
   MoreVertical,
@@ -46,12 +45,10 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
   
   // Form Inputs
   const [replyText, setReplyText] = useState('');
-  const [showSimulator, setShowSimulator] = useState(false);
-  const [simMessage, setSimMessage] = useState('');
-
+  
   // Right Panel Adding States
   const [noteContent, setNoteContent] = useState('');
-  const [taskType, setTaskType] = useState<'Call' | 'WhatsApp Follow-up' | 'Meeting' | 'Callback'>('Call');
+  const [taskType, setTaskType] = useState<'Call' | 'Follow-up' | 'Meeting' | 'Callback'>('Call');
   const [taskDueDate, setTaskDueDate] = useState('');
   // Billing edit states
   const [isEditingBilling, setIsEditingBilling] = useState(false);
@@ -279,54 +276,9 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
         })
         .eq('id', activeConv.id);
 
-      // 3. Send via WhatsApp Edge Function if credentials are configured (server-side only)
-      if (business?.has_ycloud_key && business?.ycloud_sender_phone) {
-        const { data: callData, error: callError } = await supabase.functions.invoke('send-whatsapp', {
-          body: {
-            recipientPhone: activeConv.customer?.phone,
-            text: textToSend
-          }
-        });
-        
-        if (callError) {
-          console.error('WhatsApp Edge Function error:', callError);
-          alert(`Warning: Message saved locally but failed to dispatch via WhatsApp: ${callError.message}`);
-        } else if (callData?.error) {
-          console.error('WhatsApp API error details:', callData);
-          alert(`Warning: Message saved locally but WhatsApp API failed: ${callData.error}`);
-        }
-      }
-
       fetchConversations();
     } catch (e) {
       console.error('Error sending message:', e);
-    }
-  };
-
-  // Local WhatsApp simulator
-  const handleSimulateIncoming = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!simMessage.trim() || !customerDetails || !business) return;
-
-    setShowSimulator(false);
-    const msg = simMessage;
-    setSimMessage('');
-
-    try {
-      await simulateIncomingWhatsAppMessage(
-        business.id,
-        customerDetails.name,
-        customerDetails.phone,
-        msg
-      );
-      
-      // Refresh
-      fetchConversations();
-      if (selectedCustomerId) {
-        fetchCustomerContext(selectedCustomerId);
-      }
-    } catch (e) {
-      console.error('Error simulating incoming message:', e);
     }
   };
 
@@ -579,7 +531,7 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
 
       {/* 2. MIDDLE CHAT PANEL: Message list and input bubble screen */}
       <div className={cn(
-        "flex-1 flex flex-col bg-whatsapp-chatBg dark:bg-whatsapp-chatBgDark relative",
+        "flex-1 flex flex-col bg-zinc-150/40 dark:bg-zinc-950 relative",
         selectedCustomerId ? "flex" : "hidden md:flex"
       )}>
         
@@ -601,57 +553,18 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
                   <h3 className="text-xs font-bold text-zinc-800 dark:text-zinc-100">{activeConv.customer?.name}</h3>
                   <span className="text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center gap-1 mt-0.5">
                     <span className="h-1.5 w-1.5 bg-emerald-600 rounded-full inline-block"></span>
-                    WhatsApp Connected (Via Backend)
+                    Active Conversation
                   </span>
                 </div>
               </div>
 
-              {/* Chat simulator trigger action */}
+              {/* Header Actions */}
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowSimulator(!showSimulator)}
-                  className="flex items-center gap-1.5 text-[10px] font-bold bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-950/30 dark:text-amber-400 px-3 py-1.5 rounded-lg border border-amber-600/10 cursor-pointer shadow-sm transition-all"
-                >
-                  <Play size={10} fill="currentColor" />
-                  Simulate Client Message
-                </button>
                 <button className="h-9 w-9 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-500">
                   <MoreVertical size={18} />
                 </button>
               </div>
             </div>
-
-            {/* Chat Simulator overlay popup */}
-            {showSimulator && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200/50 dark:border-amber-900/20 flex flex-col md:flex-row items-center gap-2 animate-fade-in shrink-0 relative z-20">
-                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400 shrink-0">
-                  ⚡ Simulator: Send a message from "{activeConv.customer?.name}"
-                </p>
-                <form onSubmit={handleSimulateIncoming} className="flex-1 w-full flex items-center gap-2">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Type client reply content..."
-                    value={simMessage}
-                    onChange={e => setSimMessage(e.target.value)}
-                    className="flex-1 px-3 py-1 text-xs rounded-lg border border-amber-200 dark:border-amber-900 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100"
-                  />
-                  <button 
-                    type="submit"
-                    className="bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[10px] px-3 py-1 rounded-lg cursor-pointer"
-                  >
-                    Simulate
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={() => setShowSimulator(false)}
-                    className="text-[10px] text-zinc-500 hover:underline px-2"
-                  >
-                    Cancel
-                  </button>
-                </form>
-              </div>
-            )}
 
             {/* Message Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2.5 relative">
@@ -670,8 +583,8 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
                       className={cn(
                         "max-w-[70%] rounded-2xl px-3.5 py-2 text-xs shadow-sm flex flex-col",
                         isStaff 
-                          ? "bg-whatsapp-bubbleOut dark:bg-whatsapp-bubbleOutDark text-zinc-900 dark:text-zinc-100 rounded-tr-none" 
-                          : "bg-whatsapp-bubbleIn dark:bg-whatsapp-bubbleInDark text-zinc-900 dark:text-zinc-100 rounded-tl-none"
+                          ? "bg-emerald-600 text-white rounded-tr-none" 
+                          : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-tl-none"
                       )}
                     >
                       <p className="whitespace-pre-line leading-relaxed">{msg.content}</p>
@@ -742,7 +655,7 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
             <div className="h-16 w-16 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shadow-inner mb-4">
               <MessageSquare size={28} />
             </div>
-            <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">WhatsApp Inbox</h3>
+            <h3 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Inbox</h3>
             <p className="text-xs text-zinc-400 max-w-xs mt-1">Select a customer from the left conversation list or start a new chat using Quick Add to begin messaging.</p>
           </div>
         )}
@@ -918,7 +831,7 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
                   className="px-2 py-1 text-[11px] rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200"
                 >
                   <option value="Call">Call</option>
-                  <option value="WhatsApp Follow-up">WhatsApp Follow-up</option>
+                  <option value="Follow-up">Follow-up</option>
                   <option value="Meeting">Meeting</option>
                   <option value="Callback">Callback</option>
                 </select>

@@ -14,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearchClick, onQuickAddClick }
   // Mock Notifications for UX experience
   const notifications = [
     { id: 1, title: 'Follow-up Overdue', description: 'Vikram Singh call was due 2 hours ago.', time: '2h ago' },
-    { id: 2, title: 'New WhatsApp Message', description: 'Ananya Rao: "Can you share the catalog..."', time: '3h ago' },
+    { id: 2, title: 'New Message', description: 'Ananya Rao: "Can you share the catalog..."', time: '3h ago' },
   ];
 
   return (

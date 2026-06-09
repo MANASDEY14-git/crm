@@ -66,16 +66,10 @@ export const TenantProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         id: b.business_id,
         name: b.name,
         created_at: b.created_at,
-        whatsapp_provider: b.whatsapp_provider,
-        ycloud_sender_phone: b.ycloud_sender_phone,
-        openwa_api_url: b.openwa_api_url,
-        openwa_session_id: b.openwa_session_id,
         erp_supabase_url: b.erp_supabase_url,
         erp_sync_schedule: b.erp_sync_schedule,
         erp_last_synced_at: b.erp_last_synced_at,
         erp_enabled: b.erp_enabled,
-        has_ycloud_key: b.has_ycloud_key,
-        has_openwa_key: b.has_openwa_key,
         has_erp_key: b.has_erp_key,
       }));
 

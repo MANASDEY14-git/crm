@@ -22,17 +22,7 @@
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
 
-  --color-whatsapp-teal: #075E54;
-  --color-whatsapp-tealLight: #128C7E;
-  --color-whatsapp-green: #25D366;
-  --color-whatsapp-lightGreen: #DCF8C6;
-  --color-whatsapp-darkGreen: #056162;
-  --color-whatsapp-chatBg: #efeae2;
-  --color-whatsapp-chatBgDark: #0b141a;
-  --color-whatsapp-bubbleOut: #dcf8c6;
-  --color-whatsapp-bubbleOutDark: #005c4b;
-  --color-whatsapp-bubbleIn: #ffffff;
-  --color-whatsapp-bubbleInDark: #202c33;
+
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);

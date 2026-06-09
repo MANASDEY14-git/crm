@@ -29,7 +29,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
   const [leadFollowUp, setLeadFollowUp] = useState('');
 
   const [taskCustomer, setTaskCustomer] = useState('');
-  const [taskType, setTaskType] = useState<'Call' | 'WhatsApp Follow-up' | 'Meeting' | 'Callback'>('Call');
+  const [taskType, setTaskType] = useState<'Call' | 'Follow-up' | 'Meeting' | 'Callback'>('Call');
   const [taskDueDate, setTaskDueDate] = useState('');
 
   const [chatCustomer, setChatCustomer] = useState('');
@@ -179,27 +179,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
 
       if (msgError) throw msgError;
 
-      // 3. Send via WhatsApp Edge Function if credentials are configured (server-side only)
-      if (business?.has_ycloud_key && business?.ycloud_sender_phone) {
-        const recipientPhone = customers.find(c => c.id === chatCustomer)?.phone;
-        if (recipientPhone) {
-          const { data: callData, error: callError } = await supabase.functions.invoke('send-whatsapp', {
-            body: {
-              recipientPhone,
-              text: chatFirstMsg
-            }
-          });
-          
-          if (callError) {
-            console.error('WhatsApp Edge Function error:', callError);
-            alert(`Warning: Chat created locally but failed to send via WhatsApp: ${callError.message}`);
-          } else if (callData?.error) {
-            console.error('WhatsApp API error details:', callData);
-            alert(`Warning: Chat created locally but WhatsApp API failed: ${callData.error}`);
-          }
-        }
-      }
-
       setChatCustomer('');
       setChatFirstMsg('');
       
@@ -274,7 +253,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
             }`}
           >
             <MessageSquarePlus size={14} />
-            WhatsApp Chat
+            Chat Conversation
           </button>
         </div>
 
@@ -440,7 +419,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
                     className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 focus:outline-none text-zinc-900 dark:text-zinc-100"
                   >
                     <option value="Call">Call</option>
-                    <option value="WhatsApp Follow-up">WhatsApp Follow-up</option>
+                    <option value="Follow-up">Follow-up</option>
                     <option value="Meeting">Meeting</option>
                     <option value="Callback">Callback</option>
                   </select>
@@ -488,7 +467,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({ isOpen, onClose, o
                 <textarea 
                   required
                   rows={3}
-                  placeholder="Type the initial WhatsApp message..."
+                  placeholder="Type the initial message..."
                   value={chatFirstMsg} 
                   onChange={e => setChatFirstMsg(e.target.value)}
                   className="w-full px-3 py-2 text-sm rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-emerald-600 text-zinc-900 dark:text-zinc-100"
