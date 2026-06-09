@@ -62,19 +62,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (prof) {
         setProfile(prof);
         if (prof.business_id) {
-          let { data: biz, error: bizError } = await supabase
-            .from('businesses')
-            .select('id, name, created_at, whatsapp_provider, ycloud_sender_phone, openwa_session_id, openwa_api_url, erp_supabase_url, erp_sync_schedule, erp_last_synced_at, erp_enabled, has_ycloud_key:ycloud_api_key, has_openwa_key:openwa_api_key, has_erp_key:erp_supabase_anon_key')
-            .eq('id', prof.business_id)
-            .single();
+          // SECURITY: Use a SECURITY DEFINER Postgres RPC function.
+          // It computes has_ycloud_key / has_openwa_key / has_erp_key AS BOOLEANS
+          // entirely on the database server. Raw key strings never leave the DB.
+          // The secret columns are also REVOKED from the authenticated role.
+          const { data: biz, error: bizError } = await supabase
+            .rpc('get_business_safe', { p_business_id: prof.business_id });
           if (bizError) throw bizError;
-          // Map presence indicators — never expose raw keys to frontend state
-          if (biz) {
-            (biz as any).has_ycloud_key = !!(biz as any).has_ycloud_key;
-            (biz as any).has_openwa_key = !!(biz as any).has_openwa_key;
-            (biz as any).has_erp_key = !!(biz as any).has_erp_key;
-          }
-          setBusiness(biz);
+          setBusiness(biz as any);
         }
       }
     } catch (e) {
