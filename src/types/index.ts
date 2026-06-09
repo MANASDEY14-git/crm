@@ -2,18 +2,21 @@ export interface Business {
   id: string;
   name: string;
   created_at: string;
-  ycloud_api_key?: string | null;
-  ycloud_sender_phone?: string | null;
+  // WhatsApp — non-secret fields only
   whatsapp_provider?: string | null;
-  openwa_api_url?: string | null;
-  openwa_api_key?: string | null;
+  ycloud_sender_phone?: string | null;  // phone number is not a secret
+  openwa_api_url?: string | null;       // URL is not a secret
   openwa_session_id?: string | null;
-  // ERP Integration
-  erp_supabase_url?: string | null;
-  erp_supabase_anon_key?: string | null;
+  // SECURITY: Raw API keys are NEVER sent to the frontend.
+  // These boolean flags tell the UI whether a key is configured, without revealing the key.
+  has_ycloud_key?: boolean;
+  has_openwa_key?: boolean;
+  // ERP Integration — non-secret fields only
+  erp_supabase_url?: string | null;     // URL is not a secret
   erp_sync_schedule?: string | null;
   erp_last_synced_at?: string | null;
   erp_enabled?: boolean;
+  has_erp_key?: boolean;                // boolean: is anon key configured?
 }
 
 export interface Profile {

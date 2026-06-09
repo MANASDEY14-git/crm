@@ -31,19 +31,19 @@ export const SettingsPanel: React.FC = () => {
   // Provider State
   const [whatsappProvider, setWhatsappProvider] = useState<'ycloud' | 'openwa'>('ycloud');
 
-  // YCloud States
-  const [ycloudApiKey, setYcloudApiKey] = useState('');
+  // YCloud States — write-only form fields (never pre-populated with existing key value)
+  const [newYcloudApiKey, setNewYcloudApiKey] = useState('');
   const [ycloudSenderPhone, setYcloudSenderPhone] = useState('');
 
-  // OpenWA States
+  // OpenWA States — write-only form fields
+  const [newOpenwaApiKey, setNewOpenwaApiKey] = useState('');
   const [openwaApiUrl, setOpenwaApiUrl] = useState('');
-  const [openwaApiKey, setOpenwaApiKey] = useState('');
   const [openwaSessionId, setOpenwaSessionId] = useState('my-bot');
 
   const [saveWhatsappSuccess, setSaveWhatsappSuccess] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://yursqmhzwhjnjesmbjua.supabase.co';
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
   const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-webhook`;
 
   const activeWebhookUrl = whatsappProvider === 'openwa' && business
@@ -64,19 +64,33 @@ export const SettingsPanel: React.FC = () => {
     setSaveWhatsappSuccess(false);
 
     try {
+      // Build update payload — only include key if a new one was entered
+      const updatePayload: Record<string, any> = {
+        whatsapp_provider: whatsappProvider,
+        ycloud_sender_phone: ycloudSenderPhone.trim() || null,
+        openwa_api_url: openwaApiUrl.trim() || null,
+        openwa_session_id: openwaSessionId.trim() || 'my-bot',
+      };
+
+      // Only overwrite stored keys if the user typed a new value
+      if (newYcloudApiKey.trim()) {
+        updatePayload.ycloud_api_key = newYcloudApiKey.trim();
+      }
+      if (newOpenwaApiKey.trim()) {
+        updatePayload.openwa_api_key = newOpenwaApiKey.trim();
+      }
+
       const { error } = await supabase
         .from('businesses')
-        .update({ 
-          whatsapp_provider: whatsappProvider,
-          ycloud_api_key: ycloudApiKey.trim() || null,
-          ycloud_sender_phone: ycloudSenderPhone.trim() || null,
-          openwa_api_url: openwaApiUrl.trim() || null,
-          openwa_api_key: openwaApiKey.trim() || null,
-          openwa_session_id: openwaSessionId.trim() || 'my-bot'
-        })
+        .update(updatePayload)
         .eq('id', business.id);
 
       if (error) throw error;
+
+      // Clear the write-only key inputs after save
+      setNewYcloudApiKey('');
+      setNewOpenwaApiKey('');
+
       setSaveWhatsappSuccess(true);
       setTimeout(() => {
         setSaveWhatsappSuccess(false);
@@ -100,11 +114,13 @@ export const SettingsPanel: React.FC = () => {
     if (business) {
       setBizName(business.name);
       setWhatsappProvider((business.whatsapp_provider as 'ycloud' | 'openwa') || 'ycloud');
-      setYcloudApiKey(business.ycloud_api_key || '');
+      // SECURITY: Never load raw API keys into state. Load safe fields only.
       setYcloudSenderPhone(business.ycloud_sender_phone || '');
       setOpenwaApiUrl(business.openwa_api_url || '');
-      setOpenwaApiKey(business.openwa_api_key || '');
       setOpenwaSessionId(business.openwa_session_id || 'my-bot');
+      // Key inputs start empty — user must re-enter to update
+      setNewYcloudApiKey('');
+      setNewOpenwaApiKey('');
       fetchTeamMembers();
     }
   }, [business]);
@@ -270,7 +286,7 @@ export const SettingsPanel: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-zinc-500">Connection State:</span>
                 {whatsappProvider === 'openwa' ? (
-                  openwaApiUrl && openwaApiKey ? (
+                  business?.has_openwa_key ? (
                     <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
                       <span className="h-2 w-2 bg-emerald-600 rounded-full animate-ping"></span>
                       Active (Connected via OpenWA)
@@ -282,7 +298,7 @@ export const SettingsPanel: React.FC = () => {
                     </span>
                   )
                 ) : (
-                  ycloudApiKey && ycloudSenderPhone ? (
+                  business?.has_ycloud_key && ycloudSenderPhone ? (
                     <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
                       <span className="h-2 w-2 bg-emerald-600 rounded-full animate-ping"></span>
                       Active (Connected via YCloud)
@@ -311,6 +327,20 @@ export const SettingsPanel: React.FC = () => {
                   </div>
                 )
               )}
+
+              {/* Key status indicators — boolean only, never display the actual key */}
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-zinc-500">API Key:</span>
+                {whatsappProvider === 'ycloud' ? (
+                  business?.has_ycloud_key
+                    ? <span className="text-emerald-600 font-semibold text-[10px] flex items-center gap-1">✓ Configured</span>
+                    : <span className="text-amber-500 font-semibold text-[10px]">Not set</span>
+                ) : (
+                  business?.has_openwa_key
+                    ? <span className="text-emerald-600 font-semibold text-[10px] flex items-center gap-1">✓ Configured</span>
+                    : <span className="text-amber-500 font-semibold text-[10px]">Not set</span>
+                )}
+              </div>
               
               <div className="flex justify-between items-center text-xs gap-4">
                 <span className="text-zinc-500 shrink-0">Webhook Sync URL:</span>
@@ -366,13 +396,14 @@ export const SettingsPanel: React.FC = () => {
                 <>
                   <div>
                     <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
-                      YCloud API Key
+                      YCloud API Key {business?.has_ycloud_key && <span className="text-emerald-600 ml-1">(✓ already set — enter new value to replace)</span>}
                     </label>
                     <input
                       type="password"
-                      placeholder={ycloudApiKey ? "••••••••••••••••••••••••••••••••" : "Paste your YCloud API Key..."}
-                      value={ycloudApiKey}
-                      onChange={e => setYcloudApiKey(e.target.value)}
+                      placeholder={business?.has_ycloud_key ? "Leave blank to keep existing key" : "Paste your YCloud API Key..."}
+                      value={newYcloudApiKey}
+                      onChange={e => setNewYcloudApiKey(e.target.value)}
+                      autoComplete="new-password"
                       className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
                     />
                   </div>
@@ -407,13 +438,14 @@ export const SettingsPanel: React.FC = () => {
 
                   <div>
                     <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
-                      OpenWA API Key (X-API-Key)
+                      OpenWA API Key (X-API-Key) {business?.has_openwa_key && <span className="text-emerald-600 ml-1">(✓ already set — enter new value to replace)</span>}
                     </label>
                     <input
                       type="password"
-                      placeholder={openwaApiKey ? "••••••••••••••••••••••••••••••••" : "Paste your OpenWA API Key..."}
-                      value={openwaApiKey}
-                      onChange={e => setOpenwaApiKey(e.target.value)}
+                      placeholder={business?.has_openwa_key ? "Leave blank to keep existing key" : "Paste your OpenWA API Key..."}
+                      value={newOpenwaApiKey}
+                      onChange={e => setNewOpenwaApiKey(e.target.value)}
+                      autoComplete="new-password"
                       className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
                     />
                   </div>

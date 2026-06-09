@@ -26,7 +26,7 @@ export const ErpIntegrationPanel: React.FC = () => {
 
   // Config state
   const [erpUrl, setErpUrl] = useState('');
-  const [erpAnonKey, setErpAnonKey] = useState('');
+  const [newErpAnonKey, setNewErpAnonKey] = useState(''); // write-only: never pre-populated
   const [erpEnabled, setErpEnabled] = useState(false);
   const [syncSchedule, setSyncSchedule] = useState<'manual' | 'daily'>('manual');
   const [showKey, setShowKey] = useState(false);
@@ -57,7 +57,9 @@ export const ErpIntegrationPanel: React.FC = () => {
   useEffect(() => {
     if (business) {
       setErpUrl(business.erp_supabase_url || '');
-      setErpAnonKey(business.erp_supabase_anon_key || '');
+      // SECURITY: Never load raw anon key into state. It stays server-side.
+      // newErpAnonKey starts empty — user must enter a new key to update it.
+      setNewErpAnonKey('');
       setErpEnabled(business.erp_enabled ?? false);
       setSyncSchedule((business.erp_sync_schedule as 'manual' | 'daily') || 'manual');
       fetchSyncLogs();
@@ -70,16 +72,24 @@ export const ErpIntegrationPanel: React.FC = () => {
     setIsSaving(true);
     setSaveSuccess(false);
     try {
+      // Build payload — only include anon key if a new one was typed
+      const updatePayload: Record<string, any> = {
+        erp_supabase_url: erpUrl.trim() || null,
+        erp_enabled: erpEnabled,
+        erp_sync_schedule: syncSchedule,
+      };
+      if (newErpAnonKey.trim()) {
+        updatePayload.erp_supabase_anon_key = newErpAnonKey.trim();
+      }
+
       const { error } = await supabase
         .from('businesses')
-        .update({
-          erp_supabase_url: erpUrl.trim() || null,
-          erp_supabase_anon_key: erpAnonKey.trim() || null,
-          erp_enabled: erpEnabled,
-          erp_sync_schedule: syncSchedule,
-        })
+        .update(updatePayload)
         .eq('id', business.id);
       if (error) throw error;
+
+      // Clear write-only field after save
+      setNewErpAnonKey('');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
@@ -208,14 +218,15 @@ export const ErpIntegrationPanel: React.FC = () => {
 
         <div>
           <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
-            ERP Supabase Anon Key
+            ERP Supabase Anon Key {business?.has_erp_key && <span className="text-emerald-600 ml-1">(✓ already set — enter new value to replace)</span>}
           </label>
           <div className="relative">
             <input
               type={showKey ? 'text' : 'password'}
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              value={erpAnonKey}
-              onChange={e => setErpAnonKey(e.target.value)}
+              placeholder={business?.has_erp_key ? "Leave blank to keep existing key" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
+              value={newErpAnonKey}
+              onChange={e => setNewErpAnonKey(e.target.value)}
+              autoComplete="new-password"
               className="w-full pl-3 pr-9 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
             />
             <button

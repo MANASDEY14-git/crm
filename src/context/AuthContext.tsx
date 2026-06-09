@@ -64,10 +64,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (prof.business_id) {
           let { data: biz, error: bizError } = await supabase
             .from('businesses')
-            .select('*')
+            .select('id, name, created_at, whatsapp_provider, ycloud_sender_phone, openwa_session_id, openwa_api_url, erp_supabase_url, erp_sync_schedule, erp_last_synced_at, erp_enabled, has_ycloud_key:ycloud_api_key, has_openwa_key:openwa_api_key, has_erp_key:erp_supabase_anon_key')
             .eq('id', prof.business_id)
             .single();
           if (bizError) throw bizError;
+          // Map presence indicators — never expose raw keys to frontend state
+          if (biz) {
+            (biz as any).has_ycloud_key = !!(biz as any).has_ycloud_key;
+            (biz as any).has_openwa_key = !!(biz as any).has_openwa_key;
+            (biz as any).has_erp_key = !!(biz as any).has_erp_key;
+          }
           setBusiness(biz);
         }
       }
@@ -84,6 +90,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // For demo, we sign in using a dedicated demo account.
       // If the signup doesn't exist, we sign them up.
       const demoEmail = role === 'admin' ? 'demo_admin_krazeycrm@gmail.com' : 'demo_staff_krazeycrm@gmail.com';
+      // SECURITY NOTE: This is an intentionally public throwaway demo account.
+      // It has NO access to production data. Never reuse this pattern for real user accounts.
       const demoPassword = 'demoPassword123!';
 
       let authUser: any = null;
