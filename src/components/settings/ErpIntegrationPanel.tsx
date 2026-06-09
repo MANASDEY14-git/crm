@@ -218,8 +218,11 @@ export const ErpIntegrationPanel: React.FC = () => {
 
         <div>
           <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">
-            ERP Supabase Anon Key {business?.has_erp_key && <span className="text-emerald-600 ml-1">(✓ already set — enter new value to replace)</span>}
+            ERP Supabase <span className="text-rose-500 font-bold">Service Role Key</span> {business?.has_erp_key && <span className="text-emerald-600 ml-1">(✓ already set — enter new value to replace)</span>}
           </label>
+          <p className="text-[9px] text-amber-600 dark:text-amber-500 mb-1.5 flex items-center gap-1">
+            ⚠️ Must be the <strong>service_role</strong> key — the anon key is blocked by RLS and will sync 0 customers.
+          </p>
           <div className="relative">
             <input
               type={showKey ? 'text' : 'password'}

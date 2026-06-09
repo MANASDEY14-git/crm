@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (!business.erp_supabase_url || !business.erp_supabase_anon_key) {
-      return new Response(JSON.stringify({ error: 'ERP Supabase credentials are not configured' }), {
+      return new Response(JSON.stringify({ error: 'ERP Supabase credentials are not configured. Go to Settings → ERP Integration and enter the Project URL + Service Role Key.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -104,10 +104,12 @@ Deno.serve(async (req: Request) => {
     const result: SyncResult = { customers_created: 0, customers_updated: 0, leads_created: 0, errors: [] };
 
     try {
-      // Connect to ERP Supabase project
+      // Connect to ERP Supabase project.
+      // IMPORTANT: erp_supabase_anon_key must be the SERVICE ROLE KEY, not the anon key.
+      // The ERP tables have RLS enabled — anon key returns 0 rows without errors.
       const erpClient = createClient(
         business.erp_supabase_url,
-        business.erp_supabase_anon_key
+        business.erp_supabase_anon_key  // this field stores the service_role key
       );
 
       // Step 1: Fetch all ERP customers
