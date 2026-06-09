@@ -19,7 +19,9 @@ import {
   ChevronRight,
   Filter,
   MessageSquare,
-  Building
+  Building,
+  Info,
+  X
 } from 'lucide-react';
 import { formatDateTime } from '../../lib/utils';
 import { Conversation, Message, Customer, Lead, Task, Note } from '../../types';
@@ -42,6 +44,7 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'unread' | 'assigned' | 'hot'>('all');
+  const [showDetails, setShowDetails] = useState(false);
   
   // Form Inputs
   const [replyText, setReplyText] = useState('');
@@ -90,6 +93,7 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
 
   // 2. Load Active Conversation details
   useEffect(() => {
+    setShowDetails(false);
     if (selectedCustomerId && business) {
       const conv = conversations.find(c => c.customer_id === selectedCustomerId);
       if (conv) {
@@ -560,6 +564,18 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
 
               {/* Header Actions */}
               <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowDetails(!showDetails)}
+                  className={cn(
+                    "h-9 w-9 rounded-lg flex items-center justify-center transition-colors cursor-pointer",
+                    showDetails 
+                      ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400" 
+                      : "text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                  )}
+                  title="Toggle Customer Details"
+                >
+                  <Info size={18} />
+                </button>
                 <button className="h-9 w-9 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-500">
                   <MoreVertical size={18} />
                 </button>
@@ -661,9 +677,33 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
         )}
       </div>
 
+      {/* Mobile Details Panel Backdrop */}
+      {showDetails && selectedCustomerId && customerDetails && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-zinc-950/40 backdrop-blur-sm z-30 transition-opacity"
+          onClick={() => setShowDetails(false)}
+        />
+      )}
+
       {/* 3. RIGHT PANEL: Customer Context Details */}
       {selectedCustomerId && customerDetails && (
-        <div className="hidden lg:flex w-80 xl:w-96 border-l border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 flex-col shrink-0 overflow-y-auto p-4 space-y-6">
+        <aside 
+          className={cn(
+            "border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 flex flex-col shrink-0 overflow-y-auto p-4 space-y-6 transition-all duration-300",
+            showDetails 
+              ? "fixed inset-y-0 right-0 z-40 w-80 max-w-full border-l translate-x-0 lg:static lg:w-80 lg:xl:w-96 lg:border-l lg:z-10 lg:flex" 
+              : "hidden lg:hidden"
+          )}
+        >
+          {/* Mobile Close Button */}
+          <div className="lg:hidden flex justify-end shrink-0">
+            <button 
+              onClick={() => setShowDetails(false)}
+              className="p-1.5 rounded-xl bg-zinc-150 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50 cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
           
           {/* Section 1: Customer details */}
           <div className="text-center pb-4 border-b border-zinc-100 dark:border-zinc-900">
@@ -913,7 +953,7 @@ export const Inbox: React.FC<InboxProps> = ({ selectedCustomerId, setSelectedCus
 
           </div>
 
-        </div>
+        </aside>
       )}
 
     </div>

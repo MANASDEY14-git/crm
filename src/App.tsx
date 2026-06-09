@@ -20,7 +20,12 @@ import {
   Flame, 
   Users, 
   Calendar,
-  MessageCircle
+  MessageCircle,
+  LayoutDashboard,
+  MessageSquare,
+  Kanban,
+  CheckSquare,
+  Menu
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 
@@ -40,8 +45,47 @@ const AppContent: React.FC = () => {
   
   // Layout states
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Unread Conversations count for badge indications
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    if (!business?.id) return;
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('unread_count')
+        .eq('business_id', business.id)
+        .gt('unread_count', 0);
+      if (error) throw error;
+      setUnreadCount(data?.length || 0);
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+    }
+  };
+
+  React.useEffect(() => {
+    if (!business?.id) return;
+    fetchUnreadCount();
+
+    const channel = supabase
+      .channel('global_conversations_unread')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations', filter: `business_id=eq.${business.id}` },
+        () => {
+          fetchUnreadCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [business?.id]);
 
   // Auth Forms states (for manual logins)
   const [isSignUp, setIsSignUp] = useState(false);
@@ -265,14 +309,24 @@ const AppContent: React.FC = () => {
 
   // 3. Authenticated CRM layout
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex h-screen w-screen overflow-hidden bg-zinc-50 dark:bg-zinc-950 relative">
       
+      {/* Mobile Sidebar Backdrop */}
+      {mobileSidebarOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-zinc-950/40 backdrop-blur-sm z-30 transition-opacity"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
       {/* Collapsible Sidebar */}
       <Sidebar 
         currentTab={currentTab} 
         setCurrentTab={setCurrentTab} 
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        isOpenMobile={mobileSidebarOpen}
+        onCloseMobile={() => setMobileSidebarOpen(false)}
       />
 
       {/* Main Container */}
@@ -282,10 +336,11 @@ const AppContent: React.FC = () => {
         <Header 
           onSearchClick={() => setIsSearchOpen(true)}
           onQuickAddClick={() => setIsQuickAddOpen(true)}
+          onMenuClick={() => setMobileSidebarOpen(true)}
         />
 
         {/* Dynamic Main Workspace Tabs */}
-        <main className="flex-1 overflow-hidden flex flex-col relative">
+        <main className="flex-1 overflow-hidden flex flex-col relative pb-16 md:pb-0">
           {currentTab === 'dashboard' && (
             <Dashboard 
               setCurrentTab={setCurrentTab} 
@@ -319,6 +374,78 @@ const AppContent: React.FC = () => {
           )}
           {currentTab === 'settings' && <SettingsPanel />}
         </main>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 border-t border-zinc-200/50 dark:border-zinc-800/50 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md flex items-center justify-around px-2 z-30 shadow-lg">
+          <button
+            onClick={() => {
+              setCurrentTab('dashboard');
+              setSelectedCustomerId(null);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+              currentTab === 'dashboard' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''
+            }`}
+          >
+            <LayoutDashboard size={20} className={currentTab === 'dashboard' ? 'scale-110 transition-transform' : 'scale-100'} />
+            <span className="text-[9px] mt-1 tracking-tight">Dashboard</span>
+          </button>
+          
+          <button
+            onClick={() => {
+              setCurrentTab('inbox');
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 relative ${
+              currentTab === 'inbox' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''
+            }`}
+          >
+            <MessageSquare size={20} className={currentTab === 'inbox' ? 'scale-110 transition-transform' : 'scale-100'} />
+            {unreadCount > 0 && (
+              <span className="absolute top-2.5 right-6 h-4 w-4 bg-emerald-600 text-white rounded-full flex items-center justify-center text-[8px] font-bold font-mono border-2 border-white dark:border-zinc-950">
+                {unreadCount}
+              </span>
+            )}
+            <span className="text-[9px] mt-1 tracking-tight">Inbox</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setCurrentTab('leads');
+              setSelectedCustomerId(null);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+              currentTab === 'leads' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''
+            }`}
+          >
+            <Kanban size={20} className={currentTab === 'leads' ? 'scale-110 transition-transform' : 'scale-100'} />
+            <span className="text-[9px] mt-1 tracking-tight">Pipeline</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setCurrentTab('customers');
+              setSelectedCustomerId(null);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+              currentTab === 'customers' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''
+            }`}
+          >
+            <Users size={20} className={currentTab === 'customers' ? 'scale-110 transition-transform' : 'scale-100'} />
+            <span className="text-[9px] mt-1 tracking-tight">Customers</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setCurrentTab('tasks');
+              setSelectedCustomerId(null);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 h-full py-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 ${
+              currentTab === 'tasks' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : ''
+            }`}
+          >
+            <CheckSquare size={20} className={currentTab === 'tasks' ? 'scale-110 transition-transform' : 'scale-100'} />
+            <span className="text-[9px] mt-1 tracking-tight">Tasks</span>
+          </button>
+        </div>
 
         {/* Global Dialog Modals */}
         <QuickAddModal 

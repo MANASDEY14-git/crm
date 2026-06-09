@@ -31,6 +31,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ setCurrentTab, setSele
   const [newCustId, setNewCustId] = useState('');
   const [newType, setNewType] = useState<'Call' | 'WhatsApp Follow-up' | 'Meeting' | 'Callback'>('Call');
   const [newDate, setNewDate] = useState('');
+  const [showFormMobile, setShowFormMobile] = useState(false);
   
   // Filter states
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -93,6 +94,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ setCurrentTab, setSele
       
       setNewCustId('');
       setNewDate('');
+      setShowFormMobile(false);
       fetchTasks();
     } catch (e) {
       console.error('Error creating task:', e);
@@ -150,11 +152,88 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ setCurrentTab, setSele
   return (
     <div className="flex-1 overflow-y-auto p-6 max-w-6xl mx-auto w-full space-y-6">
       
+      {/* Mobile Add Task Modal */}
+      {showFormMobile && (
+        <div className="lg:hidden fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50 rounded-2xl p-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-150 dark:border-zinc-800 mb-4">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-1.5">
+                <CalendarCheck size={14} className="text-emerald-600" />
+                Schedule Follow-up
+              </h3>
+              <button 
+                onClick={() => setShowFormMobile(false)}
+                className="h-8 w-8 rounded-full flex items-center justify-center text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateTask} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">Select Customer *</label>
+                <select
+                  required
+                  value={newCustId}
+                  onChange={e => setNewCustId(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                  <option value="">-- Choose Customer --</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">Task Type *</label>
+                <select
+                  value={newType}
+                  onChange={e => setNewType(e.target.value as any)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none"
+                >
+                  <option value="Call">📞 Call</option>
+                  <option value="WhatsApp Follow-up">💬 WhatsApp Follow-up</option>
+                  <option value="Meeting">🤝 Meeting</option>
+                  <option value="Callback">🔄 Callback</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 mb-1">Due Date & Time *</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={newDate}
+                  onChange={e => setNewDate(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-md transition-colors"
+              >
+                Add Task
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Title Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-zinc-200/50 dark:border-zinc-800/50">
-        <div>
-          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">Task & Follow-up Center</h2>
-          <p className="text-[11px] text-zinc-500 mt-0.5">Stay on top of calls, messages, and meetings schedules.</p>
+        <div className="flex justify-between items-center w-full md:w-auto">
+          <div>
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">Task & Follow-up Center</h2>
+            <p className="text-[11px] text-zinc-500 mt-0.5">Stay on top of calls, messages, and meetings schedules.</p>
+          </div>
+          <button
+            onClick={() => setShowFormMobile(true)}
+            className="lg:hidden bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-md cursor-pointer transition-all shrink-0"
+          >
+            + Schedule Task
+          </button>
         </div>
 
         {/* Task Filters */}
@@ -185,8 +264,8 @@ export const TaskManager: React.FC<TaskManagerProps> = ({ setCurrentTab, setSele
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left col: Add Task Form */}
-        <div className="p-4 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-900 shadow-sm h-fit">
+        {/* Left col: Add Task Form (Desktop only) */}
+        <div className="hidden lg:block p-4 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-900 shadow-sm h-fit">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-4 flex items-center gap-1.5">
             <CalendarCheck size={14} className="text-emerald-600" />
             Schedule Follow-up

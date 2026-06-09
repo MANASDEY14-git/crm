@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Search, Bell, Plus, User, HelpCircle } from 'lucide-react';
+import { Search, Bell, Plus, User, HelpCircle, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 interface HeaderProps {
   onSearchClick: () => void;
   onQuickAddClick: () => void;
+  onMenuClick?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onSearchClick, onQuickAddClick }) => {
+export const Header: React.FC<HeaderProps> = ({ onSearchClick, onQuickAddClick, onMenuClick }) => {
   const { profile } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -18,17 +19,30 @@ export const Header: React.FC<HeaderProps> = ({ onSearchClick, onQuickAddClick }
   ];
 
   return (
-    <header className="h-16 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20">
+    <header className="h-16 border-b border-zinc-200/50 dark:border-zinc-800/50 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-md px-4 md:px-6 flex items-center justify-between sticky top-0 z-20">
       
+      {/* Mobile Hamburger Menu Trigger */}
+      {onMenuClick && (
+        <button 
+          onClick={onMenuClick}
+          className="md:hidden mr-2 p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200/60 dark:bg-zinc-900 dark:hover:bg-zinc-800/60 text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-550 cursor-pointer shrink-0"
+        >
+          <Menu size={18} />
+        </button>
+      )}
+
       {/* Search Trigger Input */}
-      <div className="flex-1 max-w-md">
+      <div className="flex-1 max-w-xs sm:max-w-md">
         <button 
           onClick={onSearchClick}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/20 text-zinc-400 hover:text-zinc-500 text-sm hover:bg-zinc-200/30 dark:hover:bg-zinc-800/60 transition-all cursor-pointer text-left"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200/20 text-zinc-400 hover:text-zinc-500 text-sm hover:bg-zinc-200/30 dark:hover:bg-zinc-800/60 transition-all cursor-pointer text-left"
         >
-          <Search size={16} />
-          <span>Search customers, phone numbers, leads...</span>
-          <span className="ml-auto text-[10px] bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 font-mono">
+          <Search size={16} className="shrink-0" />
+          <span className="truncate text-xs sm:text-sm">
+            <span className="hidden sm:inline">Search customers, phone numbers, leads...</span>
+            <span className="sm:hidden">Search...</span>
+          </span>
+          <span className="hidden sm:inline-block ml-auto text-[10px] bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-500 font-mono">
             ⌘K
           </span>
         </button>

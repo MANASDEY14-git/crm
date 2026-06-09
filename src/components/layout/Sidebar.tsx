@@ -14,7 +14,8 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  TrendingUp
+  TrendingUp,
+  X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -23,13 +24,17 @@ interface SidebarProps {
   setCurrentTab: (tab: string) => void;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   currentTab, 
   setCurrentTab, 
   collapsed, 
-  setCollapsed 
+  setCollapsed,
+  isOpenMobile = false,
+  onCloseMobile
 }) => {
   const { profile, business, businesses, switchBusiness, createBusiness, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -49,13 +54,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside 
       className={cn(
-        "h-screen glass border-r flex flex-col transition-all duration-300 relative z-30",
-        collapsed ? "w-16 md:w-20" : "w-64"
+        "h-screen glass border-r flex flex-col transition-all duration-300 fixed md:relative z-40 inset-y-0 left-0 w-64 md:w-auto",
+        collapsed ? "md:w-20" : "md:w-64",
+        isOpenMobile ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}
     >
       {/* Sidebar Header */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-200/50 dark:border-zinc-800/50">
-        {!collapsed && (
+      <div className="h-16 flex items-center justify-between px-4 border-b border-zinc-200/50 dark:border-zinc-800/50 shrink-0">
+        {(!collapsed || isOpenMobile) && (
           <div className="flex items-center gap-2 animate-fade-in">
             <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold shadow-md shadow-emerald-600/20">
               K
@@ -71,15 +77,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
         
-        {collapsed && (
+        {collapsed && !isOpenMobile && (
           <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white font-bold mx-auto shadow-md">
             K
           </div>
         )}
 
+        {/* Mobile Close Button */}
+        {isOpenMobile && (
+          <button 
+            onClick={onCloseMobile}
+            className="md:hidden h-8 w-8 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50 cursor-pointer"
+          >
+            <X size={16} />
+          </button>
+        )}
+
         <button 
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3 top-6 h-6 w-6 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50 flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50 shadow-sm cursor-pointer z-50"
+          className="hidden md:flex absolute -right-3 top-6 h-6 w-6 rounded-full bg-white dark:bg-zinc-900 border border-zinc-200/50 dark:border-zinc-800/50 items-center justify-center text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50 shadow-sm cursor-pointer z-50"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -197,7 +213,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => setCurrentTab(item.id)}
+              onClick={() => {
+                setCurrentTab(item.id);
+                if (onCloseMobile) onCloseMobile();
+              }}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative",
                 isActive 

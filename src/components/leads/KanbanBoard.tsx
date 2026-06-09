@@ -40,11 +40,40 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ setCurrentTab, setSele
 // State-backed drag-and-drop fallback (for environments where dataTransfer may be unreliable)
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   
-  // Card Edit Modal/Popovers
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editPriority, setEditPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [editFollowUp, setEditFollowUp] = useState('');
+  const [activeMobileStage, setActiveMobileStage] = useState<Stage>('New Inquiry');
+
+  const handleMoveStage = async (leadId: string, currentStage: Stage, direction: 'prev' | 'next') => {
+    const currentIndex = STAGES.indexOf(currentStage);
+    let newIndex = currentIndex;
+    if (direction === 'prev' && currentIndex > 0) {
+      newIndex = currentIndex - 1;
+    } else if (direction === 'next' && currentIndex < STAGES.length - 1) {
+      newIndex = currentIndex + 1;
+    }
+
+    if (newIndex === currentIndex) return;
+    const targetStage = STAGES[newIndex];
+
+    // Optimistic Update
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, stage: targetStage } : l));
+
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .update({ stage: targetStage })
+        .eq('id', leadId);
+
+      if (error) throw error;
+      fetchLeads();
+    } catch (e) {
+      console.error('Error moving lead stage:', e);
+      fetchLeads(); // rollback
+    }
+  };
 
   useEffect(() => {
     if (business) {
@@ -172,8 +201,36 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ setCurrentTab, setSele
         </div>
       </div>
 
+      {/* Mobile Stage Selector Tabs */}
+      <div className="md:hidden flex items-center gap-2 overflow-x-auto px-4 py-3 bg-zinc-50 dark:bg-zinc-900/40 border-b border-zinc-200/50 dark:border-zinc-800/50 shrink-0 select-none">
+        {STAGES.map(stage => {
+          const { count } = getStageStats(stage);
+          const isSelected = activeMobileStage === stage;
+          return (
+            <button
+              key={stage}
+              onClick={() => setActiveMobileStage(stage)}
+              className={cn(
+                "px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0",
+                isSelected 
+                  ? "bg-emerald-600 text-white shadow-sm" 
+                  : "bg-white dark:bg-zinc-950 border border-zinc-200/30 text-zinc-650 dark:text-zinc-400"
+              )}
+            >
+              {stage}
+              <span className={cn(
+                "text-[9px] px-1.5 py-0.5 rounded-full font-bold",
+                isSelected ? "bg-emerald-700 text-emerald-100" : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Board Scroll Container */}
-      <div className="flex-1 overflow-x-auto p-6 flex gap-4 items-start select-none bg-zinc-50/50 dark:bg-zinc-900/10">
+      <div className="flex-1 overflow-x-auto p-4 md:p-6 flex gap-4 items-start select-none bg-zinc-50/50 dark:bg-zinc-900/10">
         {STAGES.map(stage => {
           const stageLeads = leads.filter(l => l.stage === stage);
           const { count, value } = getStageStats(stage);
@@ -191,7 +248,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ setCurrentTab, setSele
               key={stage}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, stage)}
-              className="w-72 max-h-full flex flex-col bg-zinc-100/60 dark:bg-zinc-900/40 border border-zinc-200/40 dark:border-zinc-800/40 rounded-2xl p-3 shrink-0"
+              className={cn(
+                "w-full md:w-72 max-h-full flex flex-col bg-zinc-100/60 dark:bg-zinc-900/40 border border-zinc-200/40 dark:border-zinc-800/40 rounded-2xl p-3 shrink-0",
+                stage === activeMobileStage ? "flex" : "hidden md:flex"
+              )}
             >
               
               {/* Column Title */}
@@ -292,6 +352,30 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ setCurrentTab, setSele
                                 </span>
                               </div>
                             )}
+                            {/* Mobile Stage Shift Buttons Row */}
+                            <div className="md:hidden flex items-center justify-between mt-3.5 pt-2 border-t border-zinc-100 dark:border-zinc-900/60">
+                              <button
+                                disabled={STAGES.indexOf(lead.stage) === 0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveStage(lead.id, lead.stage, 'prev');
+                                }}
+                                className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-900 disabled:opacity-30 disabled:pointer-events-none px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/20 rounded-lg cursor-pointer"
+                              >
+                                ◀ Prev
+                              </button>
+                              <span className="text-[9px] font-bold text-zinc-400">Shift stage</span>
+                              <button
+                                disabled={STAGES.indexOf(lead.stage) === STAGES.length - 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveStage(lead.id, lead.stage, 'next');
+                                }}
+                                className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-900 disabled:opacity-30 disabled:pointer-events-none px-2 py-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/20 rounded-lg cursor-pointer"
+                              >
+                                Next ▶
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           
